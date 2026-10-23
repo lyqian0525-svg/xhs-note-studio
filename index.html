@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小红书笔记素材台</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #F5F5F5;
+    color: #262626;
+    font-size: 14px;
+  }
+  header {
+    background: #fff;
+    border-bottom: 1px solid #E8E8E8;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  header h1 { font-size: 16px; margin: 0; font-weight: 600; flex: 1; }
+  button {
+    font-family: inherit;
+    font-size: 13px;
+    padding: 7px 14px;
+    border-radius: 6px;
+    border: 1px solid #D9D9D9;
+    background: #fff;
+    cursor: pointer;
+  }
+  button:hover { border-color: #999; }
+  button.primary { background: #FF2E4D; border-color: #FF2E4D; color: #fff; }
+  button.primary:hover { background: #E81F3D; }
+  .wrap { display: flex; gap: 0; align-items: flex-start; }
+  .panel {
+    width: 400px;
+    min-width: 400px;
+    background: #fff;
+    border-right: 1px solid #E8E8E8;
+    padding: 16px;
+    max-height: calc(100vh - 57px);
+    overflow-y: auto;
+  }
+  .stage {
+    flex: 1;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+  }
+  canvas {
+    width: 360px;
+    height: 640px;
+    border-radius: 8px;
+    box-shadow: 0 2px 12px rgba(0,0,0,.12);
+    background: #fff;
+  }
+  .hint { color: #8C8C8C; font-size: 12px; }
+  fieldset {
+    border: 1px solid #E8E8E8;
+    border-radius: 8px;
+    padding: 12px;
+    margin: 0 0 14px;
+  }
+  legend { font-size: 13px; font-weight: 600; padding: 0 6px; color: #595959; }
+  label { display: block; font-size: 12px; color: #8C8C8C; margin: 10px 0 4px; }
+  label:first-child { margin-top: 0; }
+  input[type=text], input[type=number], textarea, select {
+    width: 100%;
+    font-family: inherit;
+    font-size: 13px;
+    padding: 7px 9px;
+    border: 1px solid #D9D9D9;
+    border-radius: 5px;
+    background: #fff;
+  }
+  textarea { resize: vertical; min-height: 56px; }
+  .row { display: flex; gap: 8px; }
+  .row > * { flex: 1; }
+  .seg { display: flex; gap: 6px; flex-wrap: wrap; }
+  .seg button { flex: 1; min-width: 78px; }
+  .seg button.on { background: #FFF1F0; border-color: #FF2E4D; color: #C81E37; }
+  .points { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+  .point { display: flex; gap: 6px; align-items: center; }
+  .point input { flex: 1; }
+  .point button { padding: 4px 9px; color: #999; }
+  .point button:hover { color: #FF2E4D; border-color: #FF2E4D; }
+  input[type=file] { font-size: 12px; width: 100%; }
+  .mini { font-size: 12px; color: #8C8C8C; margin-top: 4px; }
+  @media (max-width: 860px) {
+    .wrap { flex-direction: column; }
+    .panel { width: 100%; min-width: 0; border-right: none; border-bottom: 1px solid #E8E8E8; max-height: none; }
+    .stage { width: 100%; padding: 16px; }
+    canvas { width: 300px; height: 533px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>小红书笔记素材台</h1>
+  <button id="btnExport" class="primary">导出 PNG（720×1280）</button>
+  <button id="btnReset">恢复示例</button>
+</header>
+
+<div class="wrap">
+  <div class="panel">
+    <fieldset>
+      <legend>版式模板</legend>
+      <div class="seg" id="tplSeg">
+        <button data-v="0" class="on">居中促销</button>
+        <button data-v="1">左图清单</button>
+        <button data-v="2">大图爆款</button>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>基础信息</legend>
+      <label>顶部标签</label>
+      <input type="text" id="badge" value="限时活动">
+      <label>品牌 / 昵称</label>
+      <input type="text" id="brand" value="倩大大的小店">
+      <label>标题</label>
+      <input type="text" id="title" value="夏季防晒披肩，出门一件就够">
+      <label>副标题</label>
+      <input type="text" id="subtitle" value="轻薄透气 · 不闷汗 · 全身可披">
+    </fieldset>
+
+    <fieldset>
+      <legend>图片素材</legend>
+      <label>商品主图</label>
+      <input type="file" id="mainImg" accept="image/*">
+      <label>展示比例</label>
+      <select id="ratio">
+        <option value="auto">自动识别</option>
+        <option value="3:4">3:4</option>
+        <option value="1:1">1:1</option>
+        <option value="raw">保留原图比例</option>
+      </select>
+      <label>适配方式</label>
+      <div class="seg" id="fitSeg">
+        <button data-v="contain" class="on">完整展示</button>
+        <button data-v="cover">铺满裁切</button>
+      </div>
+      <label>二维码图片</label>
+      <input type="file" id="qrImg" accept="image/*">
+      <div class="mini">二维码不会随主图替换而改变</div>
+    </fieldset>
+
+    <fieldset>
+      <legend>核心卖点</legend>
+      <div class="points" id="points"></div>
+      <button id="btnAddPoint" style="margin-top:8px;width:100%">+ 添加一条</button>
+    </fieldset>
+
+    <fieldset>
+      <legend>价格与转化文案</legend>
+      <div class="row">
+        <div>
+          <label>现价（元）</label>
+          <input type="number" id="price" value="59">
+        </div>
+        <div>
+          <label>原价（元）</label>
+          <input type="number" id="originPrice" value="99">
+        </div>
+      </div>
+      <label>规格</label>
+      <input type="text" id="spec" value="均码 · 多色可选">
+      <label>团长说 / 推荐语</label>
+      <textarea id="recommend">带娃出门手忙脚乱，这件披上一秒搞定，洗完随手一挂就干。</textarea>
+      <label>主文案（二维码旁）</label>
+      <input type="text" id="ctaMain" value="长按识别二维码">
+      <label>副文案（购买引导）</label>
+      <input type="text" id="ctaSub" value="查看商品详情并下单">
+    </fieldset>
+  </div>
+
+  <div class="stage">
+    <canvas id="cv" width="720" height="1280"></canvas>
+    <div class="hint">预览与导出使用同一套排版 · 导出尺寸 720 × 1280</div>
+    <div class="hint">当前版本不自动保存草稿，重开页面需重新填写；导出后的 PNG 不受影响</div>
+  </div>
+</div>
+
+<script>
+var W = 720, H = 1280, M = 44;
+var cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+var FONT = '"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif';
+
+var S = {
+  tpl: 0,
+  badge: '', brand: '', title: '', subtitle: '',
+  ratio: 'auto', fit: 'contain',
+  points: [],
+  price: '', originPrice: '', spec: '', recommend: '',
+  ctaMain: '', ctaSub: ''
+};
+var mainImage = null, qrImage = null;
+
+var DEMO = {
+  badge: '限时活动',
+  brand: '倩大大的小店',
+  title: '夏季防晒披肩，出门一件就够',
+  subtitle: '轻薄透气 · 不闷汗 · 全身可披',
+  points: ['UPF50+ 实测防晒', '冰丝面料，贴肤不黏', '一件可披可系可当盖毯', '机洗不变形'],
+  price: '59', originPrice: '99',
+  spec: '均码 · 多色可选',
+  recommend: '带娃出门手忙脚乱，这件披上一秒搞定，洗完随手一挂就干。',
+  ctaMain: '长按识别二维码',
+  ctaSub: '查看商品详情并下单'
+};
+
+function $(id) { return document.getElementById(id); }
+
+function readForm() {
+  S.badge = $('badge').value.trim();
+  S.brand = $('brand').value.trim();
+  S.title = $('title').value.trim();
+  S.subtitle = $('subtitle').value.trim();
+  S.ratio = $('ratio').value;
+  S.price = $('price').value.trim();
+  S.originPrice = $('originPrice').value.trim();
+  S.spec = $('spec').value.trim();
+  S.recommend = $('recommend').value.trim();
+  S.ctaMain = $('ctaMain').value.trim();
+  S.ctaSub = $('ctaSub').value.trim();
+  S.points = Array.prototype.map.call(
+    document.querySelectorAll('#points input'), function(i) { return i.value.trim(); }
+  ).filter(function(v) { return v !== ''; });
+}
+
+function setText(v) { ctx.fillStyle = v; }
+function font(weight, size) { ctx.font = weight + ' ' + size + 'px ' + FONT; ctx.textBaseline = 'top'; }
+
+function wrap(text, maxW, maxLines) {
+  var lines = [], line = '';
+  for (var i = 0; i < text.length; i++) {
+    var test = line + text[i];
+    if (ctx.measureText(test).width > maxW && line !== '') {
+      lines.push(line);
+      line = text[i];
+      if (maxLines && lines.length === maxLines) { line = ''; break; }
+    } else { line = test; }
+  }
+  if (line !== '' && (!maxLines || lines.length < maxLines)) lines.push(line);
+  if (maxLines && lines.length === maxLines) {
+    var last = lines[maxLines - 1];
+    if (last.length < text.replace(/\n/g, '').length) {
+      var t = last;
+      while (t.length > 1 && ctx.measureText(t + '…').width > maxW) t = t.slice(0, -1);
+      lines[maxLines - 1] = t + '…';
+    }
+  }
+  return lines;
+}
+
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function drawImageBox(img, x, y, w, h, fit) {
+  if (!img) {
+    ctx.fillStyle = '#F0F0F0';
+    roundRect(x, y, w, h, 10); ctx.fill();
+    ctx.fillStyle = '#BFBFBF';
+    font('400', 22); ctx.textAlign = 'center';
+    ctx.fillText('主图占位区', x + w / 2, y + h / 2 - 11);
+    ctx.textAlign = 'left';
+    return;
+  }
+  ctx.save();
+  roundRect(x, y, w, h, 10); ctx.clip();
+  ctx.fillStyle = '#FAFAFA'; ctx.fillRect(x, y, w, h);
+  var ir = img.width / img.height, br = w / h, sw, sh, sx, sy;
+  if (fit === 'cover') {
+    if (ir > br) { sh = h; sw = h * ir; } else { sw = w; sh = w / ir; }
+  } else {
+    if (ir > br) { sw = w; sh = w / ir; } else { sh = h; sw = h * ir; }
+  }
+  sx = x + (w - sw) / 2; sy = y + (h - sh) / 2;
+  ctx.drawImage(img, sx, sy, sw, sh);
+  ctx.restore();
+  ctx.strokeStyle = 'rgba(0,0,0,.06)'; ctx.lineWidth = 1;
+  roundRect(x, y, w, h, 10); ctx.stroke();
+}
+
+function aspectOf(img) {
+  if (!img) return 3 / 4;
+  var r = S.ratio;
+  if (r === '3:4') return 3 / 4;
+  if (r === '1:1') return 1;
+  return img.width / img.height;
+}
+
+function draw() {
+  readForm();
+  ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, W, H);
+
+  var y = M;
+
+  if (S.badge) {
+    font('500', 22);
+    var bw = ctx.measureText(S.badge).width + 28;
+    var bx = (S.tpl === 1) ? M : (W - bw) / 2;
+    ctx.fillStyle = '#FF2E4D';
+    roundRect(bx, y, bw, 36, 18); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+    ctx.fillText(S.badge, bx + bw / 2, y + 8);
+    ctx.textAlign = 'left';
+    y += 36 + 16;
+  }
+
+  var tx = (S.tpl === 1) ? M : M;
+  var align = (S.tpl === 1) ? 'left' : 'center';
+  var cx = (S.tpl === 1) ? M : W / 2;
+
+  if (S.brand) {
+    font('400', 22); ctx.fillStyle = '#8C8C8C'; ctx.textAlign = align;
+    ctx.fillText(S.brand, cx, y); ctx.textAlign = 'left';
+    y += 22 + 10;
+  }
+
+  font('600', 40); ctx.fillStyle = '#1A1A1A';
+  var tlines = wrap(S.title || '未填写标题', W - M * 2, 2);
+  ctx.textAlign = align;
+  for (var i = 0; i < tlines.length; i++) { ctx.fillText(tlines[i], cx, y); y += 48; }
+  ctx.textAlign = 'left';
+  y += 4;
+
+  if (S.subtitle) {
+    font('400', 24); ctx.fillStyle = '#8C8C8C';
+    var slines = wrap(S.subtitle, W - M * 2, 2);
+    ctx.textAlign = align;
+    for (var j = 0; j < slines.length; j++) { ctx.fillText(slines[j], cx, y); y += 32; }
+    ctx.textAlign = 'left';
+    y += 8;
+  }
+
+  var topY = y;
+
+  var qrSize = 96, bottomH = 210;
+  var bottomTop = H - M - bottomH;
+
+  var price = parseFloat(S.price), origin = parseFloat(S.originPrice);
+  var hasPrice = !isNaN(price);
+  var save = (hasPrice && !isNaN(origin) && origin > price) ? (origin - price) : 0;
+
+  ctx.fillStyle = '#FAFAFA';
+  roundRect(M - 10, bottomTop - 14, W - (M - 10) * 2, bottomH + 14, 12); ctx.fill();
+
+  var by = bottomTop + 6;
+  if (hasPrice) {
+    font('600', 56); ctx.fillStyle = '#FF2E4D';
+    ctx.fillText('¥' + price, M, by);
+    var pw = ctx.measureText('¥' + price).width;
+    if (save > 0) {
+      font('400', 24); ctx.fillStyle = '#BFBFBF';
+      ctx.fillText('¥' + origin, M + pw + 12, by + 22);
+      var ow = ctx.measureText('¥' + origin).width;
+      ctx.strokeStyle = '#BFBFBF'; ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(M + pw + 12, by + 34); ctx.lineTo(M + pw + 12 + ow, by + 34); ctx.stroke();
+      ctx.fillStyle = '#FF2E4D';
+      font('500', 22);
+      ctx.fillText('省 ' + save + ' 元', M + pw + ow + 26, by + 22);
+    }
+  }
+  if (S.spec) {
+    font('400', 22); ctx.fillStyle = '#8C8C8C';
+    ctx.fillText(S.spec, M, by + 70);
+  }
+  if (S.recommend) {
+    font('400', 22); ctx.fillStyle = '#595959';
+    var rl = wrap(S.recommend, W - M * 2 - qrSize - 30, 2);
+    for (var k = 0; k < rl.length; k++) ctx.fillText(rl[k], M, by + 104 + k * 30);
+  }
+
+  var qx = W - M - qrSize, qy = bottomTop + 20;
+  if (qrImage) {
+    ctx.fillStyle = '#fff'; roundRect(qx, qy, qrSize, qrSize, 8); ctx.fill();
+    ctx.drawImage(qrImage, qx + 4, qy + 4, qrSize - 8, qrSize - 8);
+  } else {
+    ctx.fillStyle = '#F0F0F0'; roundRect(qx, qy, qrSize, qrSize, 8); ctx.fill();
+    font('400', 20); ctx.fillStyle = '#BFBFBF'; ctx.textAlign = 'center';
+    ctx.fillText('二维码', qx + qrSize / 2, qy + qrSize / 2 - 10);
+    ctx.textAlign = 'left';
+  }
+  if (S.ctaMain) {
+    font('500', 22); ctx.fillStyle = '#262626'; ctx.textAlign = 'center';
+    ctx.fillText(S.ctaMain, qx + qrSize / 2, qy + qrSize + 12); ctx.textAlign = 'left';
+  }
+  if (S.ctaSub) {
+    font('400', 20); ctx.fillStyle = '#8C8C8C'; ctx.textAlign = 'center';
+    ctx.fillText(S.ctaSub, qx + qrSize / 2, qy + qrSize + 42); ctx.textAlign = 'left';
+  }
+
+  var midTop = topY, midBottom = bottomTop - 26;
+  var midH = midBottom - midTop;
+  var areaW = W - M * 2;
+
+  if (S.tpl === 0) {
+    var ar = aspectOf(mainImage);
+    var imgW = Math.min(areaW, 560);
+    var imgH = imgW / ar;
+    var maxImgH = midH - 40 - Math.min(S.points.length, 6) * 34;
+    if (imgH > maxImgH) { imgH = Math.max(maxImgH, 120); imgW = imgH * ar; }
+    var ix = (W - imgW) / 2, iy = midTop + 6;
+    drawImageBox(mainImage, ix, iy, imgW, imgH, S.fit);
+    var py = iy + imgH + 26;
+    drawPointsCentered(py, Math.min(S.points.length, 6));
+  } else if (S.tpl === 1) {
+    var imgW2 = 330, ar2 = aspectOf(mainImage);
+    var imgH2 = Math.max(Math.min(imgW2 / ar2, midH - 20), 100);
+    imgW2 = imgH2 * ar2;
+    drawImageBox(mainImage, M, midTop + 6, imgW2, imgH2, S.fit);
+    drawPointsList(M + imgW2 + 28, midTop + 12, areaW - imgW2 - 28, Math.min(S.points.length, 6));
+  } else {
+    var imgH3 = Math.max(Math.min(midH - 130, 640), 120);
+    drawImageBox(mainImage, M, midTop + 6, areaW, imgH3, S.fit);
+    var py3 = midTop + 6 + imgH3 + 24;
+    drawPointsChips(py3, Math.min(S.points.length, 6));
+  }
+}
+
+function drawPointsCentered(y, n) {
+  font('400', 26);
+  ctx.textAlign = 'left';
+  for (var i = 0; i < n; i++) {
+    var line = wrap(S.points[i], W - M * 2 - 60, 1)[0] || '';
+    var tw = ctx.measureText(line).width;
+    var x0 = W / 2 - (tw + 18) / 2;
+    ctx.fillStyle = '#FF2E4D';
+    ctx.fillText('·', x0, y + i * 38);
+    ctx.fillStyle = '#262626';
+    ctx.fillText(line, x0 + 18, y + i * 38);
+  }
+}
+
+function drawPointsList(x, y, w, n) {
+  font('400', 24);
+  for (var i = 0; i < n; i++) {
+    ctx.fillStyle = '#FF2E4D';
+    ctx.beginPath(); ctx.arc(x + 6, y + i * 42 + 12, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#262626';
+    var lines = wrap(S.points[i], w - 30, 2);
+    for (var j = 0; j < lines.length; j++) ctx.fillText(lines[j], x + 22, y + i * 42 + j * 30);
+  }
+}
+
+function drawPointsChips(y, n) {
+  font('400', 24);
+  var x = M, rowY = y;
+  for (var i = 0; i < n; i++) {
+    var t = wrap(S.points[i], 300, 1)[0] || '';
+    var wch = ctx.measureText(t).width + 32;
+    if (x + wch > W - M) { x = M; rowY += 52; }
+    if (rowY + 40 > H - M - 220) break;
+    ctx.fillStyle = '#FFF1F0';
+    roundRect(x, rowY, wch, 40, 20); ctx.fill();
+    ctx.fillStyle = '#C81E37';
+    ctx.fillText(t, x + 16, rowY + 8);
+    x += wch + 12;
+  }
+}
+
+function renderPoints() {
+  var box = $('points');
+  box.innerHTML = '';
+  S.points.forEach(function(v, i) {
+    var d = document.createElement('div');
+    d.className = 'point';
+    var inp = document.createElement('input');
+    inp.type = 'text'; inp.value = v;
+    inp.addEventListener('input', draw);
+    var b = document.createElement('button');
+    b.textContent = '×';
+    b.addEventListener('click', function() { S.points.splice(i, 1); renderPoints(); draw(); });
+    d.appendChild(inp); d.appendChild(b);
+    box.appendChild(d);
+  });
+}
+
+function loadDemo() {
+  $('badge').value = DEMO.badge;
+  $('brand').value = DEMO.brand;
+  $('title').value = DEMO.title;
+  $('subtitle').value = DEMO.subtitle;
+  $('ratio').value = 'auto';
+  $('price').value = DEMO.price;
+  $('originPrice').value = DEMO.originPrice;
+  $('spec').value = DEMO.spec;
+  $('recommend').value = DEMO.recommend;
+  $('ctaMain').value = DEMO.ctaMain;
+  $('ctaSub').value = DEMO.ctaSub;
+  S.points = DEMO.points.slice();
+  renderPoints();
+  draw();
+}
+
+['badge','brand','title','subtitle','ratio','price','originPrice','spec','recommend','ctaMain','ctaSub']
+  .forEach(function(id) { $(id).addEventListener('input', draw); $(id).addEventListener('change', draw); });
+
+document.querySelectorAll('#tplSeg button').forEach(function(b) {
+  b.addEventListener('click', function() {
+    document.querySelectorAll('#tplSeg button').forEach(function(x) { x.classList.remove('on'); });
+    b.classList.add('on'); S.tpl = parseInt(b.dataset.v, 10); draw();
+  });
+});
+document.querySelectorAll('#fitSeg button').forEach(function(b) {
+  b.addEventListener('click', function() {
+    document.querySelectorAll('#fitSeg button').forEach(function(x) { x.classList.remove('on'); });
+    b.classList.add('on'); S.fit = b.dataset.v; draw();
+  });
+});
+
+$('btnAddPoint').addEventListener('click', function() {
+  S.points.push('新卖点 ' + (S.points.length + 1));
+  renderPoints(); draw();
+});
+
+function bindImage(inputId, cb) {
+  $(inputId).addEventListener('change', function(e) {
+    var f = e.target.files && e.target.files[0];
+    if (!f) return;
+    var r = new FileReader();
+    r.onload = function(ev) {
+      var img = new Image();
+      img.onload = function() { cb(img); draw(); };
+      img.src = ev.target.result;
+    };
+    r.readAsDataURL(f);
+  });
+}
+bindImage('mainImg', function(img) { mainImage = img; });
+bindImage('qrImg', function(img) { qrImage = img; });
+
+$('btnReset').addEventListener('click', function() {
+  mainImage = null; qrImage = null;
+  $('mainImg').value = ''; $('qrImg').value = '';
+  loadDemo();
+});
+
+$('btnExport').addEventListener('click', function() {
+  draw();
+  cv.toBlob(function(blob) {
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    var t = (S.title || 'poster').replace(/[\\/:*?"<>|]/g, '');
+    a.download = t + '-' + ['居中促销','左图清单','大图爆款'][S.tpl] + '.png';
+    a.click();
+    setTimeout(function() { URL.revokeObjectURL(a.href); }, 2000);
+  }, 'image/png');
+});
+
+loadDemo();
+</script>
+</body>
+</html>
